@@ -5,15 +5,18 @@ use opentelemetry_otlp::WithExportConfig;
 use std::env;
 use tonic::metadata::MetadataMap;
 use tonic::transport::ClientTlsConfig;
+use tonic::transport::Certificate;
 use tracing_subscriber::prelude::*;
 use url::Url;
 
-fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
+async fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
     let honeycomb_api_key = env::var("HONEYCOMB_API_KEY").expect("HONEYCOMB_API_KEY must be set");
 
-    let mut metadata = MetadataMap::with_capacity(2);
+    let pem = tokio::fs::read("/etc/ssl/certs/Starfield_Services_Root_Certificate_Authority_-_G2.pem").await.expect("read the cert file");
+    let cert = Certificate::from_pem(pem);
+
+    let mut metadata = MetadataMap::with_capacity(1);
     metadata.insert("x-honeycomb-team", honeycomb_api_key.parse().unwrap());
-    metadata.insert("x-honeycomb-dataset", "my-api".parse().unwrap());
 
     let opentelemetry_endpoint =
         env::var("OTEL_ENDPOINT").unwrap_or_else(|_| "https://api.honeycomb.io".to_owned());
@@ -29,11 +32,7 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
                 .with_endpoint(opentelemetry_endpoint.as_str())
                 .with_metadata(metadata.clone())
                 .with_tls_config(
-                    ClientTlsConfig::new().domain_name(
-                        opentelemetry_endpoint
-                            .host_str()
-                            .expect("OTEL_ENDPOINT should have a valid host"),
-                    ),
+                    ClientTlsConfig::new().ca_certificate(cert)
                 ),
         )
         .install_batch(opentelemetry::runtime::Tokio)
@@ -41,7 +40,7 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
 
 #[tokio::main]
 async fn main() {
-    let tracer = init_tracer().expect("failed to instantiate opentelemetry tracing");
+    let tracer = init_tracer().await.expect("failed to instantiate opentelemetry tracing");
 
     tracing_subscriber::registry()
         .with(tracing_subscriber::EnvFilter::from_default_env())

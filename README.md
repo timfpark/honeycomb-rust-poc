@@ -3,5 +3,5 @@
 Run with:
 
 ```
-$ HONEYCOMB_API_KEY={api key} RUST_LOG=trace cargo run
+$ HONEYCOMB_API_KEY={api key} OTEL_SERVICE_NAME=rust-poc RUST_LOG=trace cargo run
 ```
