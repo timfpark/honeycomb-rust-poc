@@ -32,7 +32,7 @@ fn init_tracer() -> Result<sdktrace::Tracer, TraceError> {
                     ClientTlsConfig::new().domain_name(
                         opentelemetry_endpoint
                             .host_str()
-                            .expect("OTEL_ENDPOINTshould have a valid host"),
+                            .expect("OTEL_ENDPOINT should have a valid host"),
                     ),
                 ),
         )
